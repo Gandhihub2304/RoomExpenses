@@ -16,9 +16,11 @@ import { PasswordInput } from "@/components/password-input";
 import { GoogleButton } from "@/components/auth/google-button";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { login } from "@/lib/api/auth";
+import { useAuth } from "@/lib/auth-context";
 
 export function LoginForm() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const [serverError, setServerError] = React.useState<string | null>(null);
 
   const {
@@ -41,8 +43,8 @@ export function LoginForm() {
       return;
     }
     toast.success("Welcome back!");
+    await refresh();
     router.push("/rooms");
-    router.refresh();
   }
 
   return (
