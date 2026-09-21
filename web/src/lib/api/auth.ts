@@ -1,3 +1,5 @@
+import { api } from "@/lib/api/client";
+import type { User } from "@/lib/types";
 import type {
   LoginInput,
   RegisterInput,
@@ -5,55 +7,45 @@ import type {
   ResetPasswordInput,
 } from "@/lib/validations/auth";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api";
-
-export type ApiResult<T = undefined> =
-  | { ok: true; data: T }
-  | { ok: false; message: string };
-
-async function postJson<T>(path: string, body: unknown): Promise<ApiResult<T>> {
-  try {
-    const res = await fetch(`${API_BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    });
-
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      return {
-        ok: false,
-        message: data?.message ?? "Something went wrong. Please try again.",
-      };
-    }
-
-    return { ok: true, data: data as T };
-  } catch {
-    return {
-      ok: false,
-      message: "Can't reach the server. Check your connection and try again.",
-    };
-  }
-}
-
 export function login(input: LoginInput) {
-  return postJson("/auth/login", input);
+  return api.post<User>("/auth/login", {
+    email: input.email,
+    password: input.password,
+    remember: input.remember,
+  });
 }
 
 export function register(input: RegisterInput) {
-  return postJson("/auth/register", input);
+  return api.post<User>("/auth/register", {
+    name: input.name,
+    email: input.email,
+    password: input.password,
+  });
+}
+
+export function logout() {
+  return api.post<{ success: boolean }>("/auth/logout");
+}
+
+export function getCurrentUser() {
+  return api.get<User>("/auth/me");
 }
 
 export function forgotPassword(input: ForgotPasswordInput) {
-  return postJson("/auth/forgot-password", input);
+  return api.post<{ success: boolean }>("/auth/forgot-password", input);
 }
 
 export function resetPassword(token: string, input: ResetPasswordInput) {
-  return postJson("/auth/reset-password", { token, ...input });
+  return api.post<{ success: boolean }>("/auth/reset-password", {
+    token,
+    password: input.password,
+  });
 }
 
 export function resendVerification(email: string) {
-  return postJson("/auth/resend-verification", { email });
+  return api.post<{ success: boolean }>("/auth/resend-verification", { email });
+}
+
+export function verifyEmail(token: string) {
+  return api.post<{ success: boolean }>("/auth/verify-email", { token });
 }
