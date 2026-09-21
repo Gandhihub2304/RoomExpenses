@@ -7,7 +7,12 @@ const REFRESH_COOKIE = "rm_refresh";
 const baseOptions = {
   httpOnly: true,
   secure: isProd,
-  sameSite: "lax" as const,
+  // Frontend (Vercel) and backend (Render) are on different domains in
+  // production, so the cookie must be sent cross-site — that requires
+  // SameSite=None, which browsers only honor when Secure is also set.
+  // In dev, frontend/backend share localhost so Lax is fine and avoids
+  // needing HTTPS locally.
+  sameSite: (isProd ? "none" : "lax") as "none" | "lax",
   domain: env.COOKIE_DOMAIN,
   path: "/",
 };
