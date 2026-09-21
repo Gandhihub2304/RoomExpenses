@@ -28,3 +28,11 @@ export function joinRoom(code: string) {
 export function getRoomDetail(roomId: string) {
   return api.get(`/rooms/${roomId}`);
 }
+
+export function updateRoom(roomId: string, input: Partial<CreateRoomInput>) {
+  return api.patch(`/rooms/${roomId}`, input);
+}
+
+export function leaveRoom(roomId: string) {
+  return api.post<{ success: boolean }>(`/rooms/${roomId}/leave`);
+}

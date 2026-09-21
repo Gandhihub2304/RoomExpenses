@@ -13,6 +13,10 @@ import { settlementRouter } from "@/routes/settlement.routes";
 import { dashboardRouter } from "@/routes/dashboard.routes";
 import { notificationRouter } from "@/routes/notification.routes";
 import { activityLogRouter } from "@/routes/activity-log.routes";
+import { billRouter } from "@/routes/bill.routes";
+import { budgetRouter } from "@/routes/budget.routes";
+import { recurringRouter } from "@/routes/recurring.routes";
+import { analyticsRouter } from "@/routes/analytics.routes";
 
 export const app = express();
 
@@ -40,6 +44,10 @@ app.use("/api/rooms/:roomId/expenses", expenseRouter);
 app.use("/api/rooms/:roomId/settlements", settlementRouter);
 app.use("/api/rooms/:roomId/dashboard", dashboardRouter);
 app.use("/api/rooms/:roomId/activity-log", activityLogRouter);
+app.use("/api/rooms/:roomId/bills", billRouter);
+app.use("/api/rooms/:roomId/budget", budgetRouter);
+app.use("/api/rooms/:roomId/recurring-expenses", recurringRouter);
+app.use("/api/rooms/:roomId/analytics", analyticsRouter);
 app.use("/api/notifications", notificationRouter);
 
 app.use(notFoundHandler);
