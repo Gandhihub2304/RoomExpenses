@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { RoomRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/utils/api-error";
+import { asyncHandler } from "@/utils/async-handler";
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -19,7 +20,7 @@ declare global {
  * without verifying the caller actually belongs to that room.
  */
 export function requireRoomMembership(options?: { roles?: RoomRole[] }) {
-  return async (req: Request, res: Response, next: NextFunction) => {
+  return asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const roomId = req.params.roomId;
     if (!roomId) {
       throw ApiError.badRequest("Room id is required");
@@ -43,7 +44,7 @@ export function requireRoomMembership(options?: { roles?: RoomRole[] }) {
     req.roomId = roomId;
     req.roomRole = membership.role;
     next();
-  };
+  });
 }
 
 export function requireRoomAdmin() {
