@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { RoommateDashboardData } from "@/lib/api/dashboard";
 import { formatMoney, formatDate } from "@/lib/format";
 import { useAuth } from "@/lib/auth-context";
+import { GoalCard } from "@/components/goals/goal-card";
 
 export function RoommateDashboardView({
   data,
@@ -95,6 +96,55 @@ export function RoommateDashboardView({
           </CardContent>
         </Card>
       )}
+
+      <div className="grid gap-4 lg:grid-cols-5">
+        <div className="lg:col-span-2">
+          <GoalCard roomId={roomId} currency={currency} />
+        </div>
+
+        <Card className="py-4 lg:col-span-3">
+          <CardHeader className="px-4">
+            <p className="text-sm font-semibold">Spending by category (this month)</p>
+          </CardHeader>
+          <CardContent className="px-4">
+            {data.categoryBreakdown.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">No spending yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {data.categoryBreakdown
+                  .slice()
+                  .sort((a, b) => Number(b.total) - Number(a.total))
+                  .map((cat) => {
+                    const monthTotal = data.categoryBreakdown.reduce((s, c) => s + Number(c.total), 0);
+                    const pct = monthTotal > 0 ? (Number(cat.total) / monthTotal) * 100 : 0;
+                    return (
+                      <div key={cat.categoryId ?? "none"}>
+                        <div className="mb-1 flex items-center justify-between text-sm">
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span
+                              className="size-2.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: cat.color }}
+                            />
+                            <span className="truncate">{cat.categoryName}</span>
+                          </span>
+                          <span className="shrink-0 font-medium tabular-nums">
+                            {formatMoney(cat.total, currency)}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{ width: `${pct}%`, backgroundColor: cat.color }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="py-4">
         <CardHeader className="flex-row items-center justify-between px-4">

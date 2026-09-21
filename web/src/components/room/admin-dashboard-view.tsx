@@ -3,9 +3,7 @@ import {
   Wallet,
   TrendingUp,
   Users,
-  Receipt,
   AlertCircle,
-  ArrowRight,
   PiggyBank,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -13,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { AdminDashboardData } from "@/lib/api/dashboard";
 import { formatMoney, formatDate, relativeTime } from "@/lib/format";
+import { GoalCard } from "@/components/goals/goal-card";
 
 function StatCard({
   label,
@@ -155,24 +154,46 @@ export function AdminDashboardView({
         </Card>
 
         <Card className="py-4 lg:col-span-2">
-          <CardHeader className="px-4">
-            <p className="text-sm font-semibold">Category breakdown (this month)</p>
+          <CardHeader className="flex-row items-center justify-between px-4">
+            <p className="text-sm font-semibold">Spending by category (this month)</p>
+            <Link href={`/r/${roomId}/analytics`} className="text-xs font-medium text-primary hover:underline">
+              View all
+            </Link>
           </CardHeader>
           <CardContent className="px-4">
             {data.categoryBreakdown.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">No spending yet.</p>
             ) : (
               <div className="space-y-3">
-                {data.categoryBreakdown.map((cat) => (
-                  <div key={cat.categoryId ?? "none"} className="flex items-center gap-2">
-                    <span
-                      className="size-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: cat.color }}
-                    />
-                    <span className="flex-1 truncate text-sm">{cat.categoryName}</span>
-                    <span className="text-sm font-medium tabular-nums">{formatMoney(cat.total, currency)}</span>
-                  </div>
-                ))}
+                {data.categoryBreakdown
+                  .slice()
+                  .sort((a, b) => Number(b.total) - Number(a.total))
+                  .map((cat) => {
+                    const monthTotal = data.categoryBreakdown.reduce((s, c) => s + Number(c.total), 0);
+                    const pct = monthTotal > 0 ? (Number(cat.total) / monthTotal) * 100 : 0;
+                    return (
+                      <div key={cat.categoryId ?? "none"}>
+                        <div className="mb-1 flex items-center justify-between text-sm">
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span
+                              className="size-2.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: cat.color }}
+                            />
+                            <span className="truncate">{cat.categoryName}</span>
+                          </span>
+                          <span className="shrink-0 font-medium tabular-nums">
+                            {formatMoney(cat.total, currency)}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{ width: `${pct}%`, backgroundColor: cat.color }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </CardContent>
@@ -180,34 +201,9 @@ export function AdminDashboardView({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <Card className="py-4 lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between px-4">
-            <p className="text-sm font-semibold">Suggested settlements</p>
-            <Link href={`/r/${roomId}/settlements`} className="text-xs font-medium text-primary hover:underline">
-              View all
-            </Link>
-          </CardHeader>
-          <CardContent className="px-4">
-            {data.suggestedSettlements.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Everyone is settled up.</p>
-            ) : (
-              <div className="space-y-3">
-                {data.suggestedSettlements.map((s, i) => (
-                  <div key={i} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate font-medium">{s.fromName}</span>
-                      <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />
-                      <span className="truncate font-medium">{s.toName}</span>
-                    </span>
-                    <span className="shrink-0 font-semibold tabular-nums">
-                      {formatMoney(s.amount, currency)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <div className="lg:col-span-2">
+          <GoalCard roomId={roomId} currency={currency} />
+        </div>
 
         <Card className="py-4 lg:col-span-3">
           <CardHeader className="flex-row items-center justify-between px-4">
@@ -221,7 +217,7 @@ export function AdminDashboardView({
               <p className="py-6 text-center text-sm text-muted-foreground">No activity yet.</p>
             ) : (
               <div className="space-y-3">
-                {data.recentActivity.map((log) => (
+                {data.recentActivity.slice(0, 5).map((log) => (
                   <div key={log.id} className="flex items-center justify-between gap-2 text-sm">
                     <span className="truncate text-muted-foreground">
                       <span className="font-medium text-foreground">{log.actor.name}</span>{" "}

@@ -17,6 +17,7 @@ import { billRouter } from "@/routes/bill.routes";
 import { budgetRouter } from "@/routes/budget.routes";
 import { recurringRouter } from "@/routes/recurring.routes";
 import { analyticsRouter } from "@/routes/analytics.routes";
+import { goalRouter } from "@/routes/goal.routes";
 
 export const app = express();
 
@@ -48,6 +49,7 @@ app.use("/api/rooms/:roomId/bills", billRouter);
 app.use("/api/rooms/:roomId/budget", budgetRouter);
 app.use("/api/rooms/:roomId/recurring-expenses", recurringRouter);
 app.use("/api/rooms/:roomId/analytics", analyticsRouter);
+app.use("/api/rooms/:roomId/goals", goalRouter);
 app.use("/api/notifications", notificationRouter);
 
 app.use(notFoundHandler);

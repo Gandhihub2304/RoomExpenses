@@ -67,6 +67,7 @@ export interface RoommateDashboardData {
     fromUser: { id: string; name: string };
     toUser: { id: string; name: string };
   }[];
+  categoryBreakdown: CategoryBreakdown[];
 }
 
 export type DashboardData = AdminDashboardData | RoommateDashboardData;

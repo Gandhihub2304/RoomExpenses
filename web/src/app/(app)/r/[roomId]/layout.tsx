@@ -11,11 +11,15 @@ export default async function RoomLayout({
 
   return (
     <RoomProvider roomId={roomId}>
-      <div className="flex min-h-screen flex-col">
+      <div className="h-screen overflow-hidden">
         <RoomHeader roomId={roomId} />
-        <div className="mx-auto flex w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8">
+        <div className="flex h-[calc(100vh-4rem)]">
           <RoomSidebar roomId={roomId} />
-          <main className="min-w-0 flex-1 py-6 pb-24 lg:pl-8 lg:pb-6">{children}</main>
+          <main className="min-w-0 flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-6xl px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:pb-6">
+              {children}
+            </div>
+          </main>
         </div>
         <RoomBottomNav roomId={roomId} />
       </div>

@@ -35,7 +35,8 @@ async function request<T>(
       };
     }
 
-    return { ok: true, data: (body?.data ?? body) as T };
+    const data = body && typeof body === "object" && "data" in body ? body.data : body;
+    return { ok: true, data: data as T };
   } catch {
     return {
       ok: false,

@@ -69,6 +69,8 @@ enum NotificationType {
   RECURRING_EXPENSE_CREATED
   PAYMENT_CONFIRMED
   ROOM_ANNOUNCEMENT
+  GOAL_CONTRIBUTION
+  GOAL_REACHED
 }
 
 enum RecurringFrequency {
@@ -135,6 +137,8 @@ model User {
   receipts          Receipt[]
   recurringExpenses RecurringExpense[] @relation("RecurringCreatedBy")
   bills             Bill[]             @relation("BillCreatedBy")
+  createdGoals      Goal[]             @relation("GoalCreatedBy")
+  goalContributions GoalContribution[] @relation("GoalContributionAddedBy")
 
   @@index([email])
 }
@@ -204,6 +208,7 @@ model Room {
   recurringExpenses RecurringExpense[]
   bills             Bill[]
   budgets           Budget[]
+  goals             Goal[]
 
   @@index([createdById])
 }
@@ -407,6 +412,44 @@ model BudgetCategory {
   amount     Decimal  @db.Decimal(12, 2)
 
   @@unique([budgetId, categoryId])
+}
+
+// ---------------------------------------------------------------------------
+// Room savings goal
+// ---------------------------------------------------------------------------
+
+model Goal {
+  id            String    @id @default(cuid())
+  roomId        String
+  room          Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  name          String
+  targetAmount  Decimal   @db.Decimal(12, 2)
+  savedAmount   Decimal   @default(0) @db.Decimal(12, 2)
+  isActive      Boolean   @default(true)
+  reachedAt     DateTime?
+  createdById   String
+  createdBy     User      @relation("GoalCreatedBy", fields: [createdById], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  contributions GoalContribution[]
+
+  @@index([roomId, isActive])
+}
+
+model GoalContribution {
+  id          String   @id @default(cuid())
+  goalId      String
+  goal        Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  amount      Decimal  @db.Decimal(12, 2)
+  month       Int
+  year        Int
+  note        String?
+  addedById   String
+  addedBy     User     @relation("GoalContributionAddedBy", fields: [addedById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([goalId, month, year])
 }
 
 // ---------------------------------------------------------------------------
