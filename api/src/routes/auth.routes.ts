@@ -13,6 +13,8 @@ import {
   resetPasswordSchema,
   verifyEmailSchema,
   resendVerificationSchema,
+  updateProfileSchema,
+  changePasswordSchema,
 } from "@/validators/auth";
 import {
   registerUser,
@@ -25,6 +27,10 @@ import {
   resendVerification,
   requestPasswordReset,
   resetPassword,
+  updateProfile,
+  changePassword,
+  listActiveSessions,
+  revokeSessionById,
 } from "@/services/auth.service";
 
 export const authRouter = Router();
@@ -142,6 +148,46 @@ authRouter.post(
   validateBody(resetPasswordSchema),
   asyncHandler(async (req, res) => {
     await resetPassword(req.body.token, req.body.password);
+    res.json({ data: { success: true } });
+  }),
+);
+
+authRouter.patch(
+  "/me",
+  requireAuth,
+  validateBody(updateProfileSchema),
+  asyncHandler(async (req, res) => {
+    const user = await updateProfile(req.userId!, req.body);
+    res.json({ data: sanitizeUser(user) });
+  }),
+);
+
+authRouter.post(
+  "/change-password",
+  requireAuth,
+  authRateLimit,
+  validateBody(changePasswordSchema),
+  asyncHandler(async (req, res) => {
+    await changePassword(req.userId!, req.body.currentPassword, req.body.newPassword);
+    clearAuthCookies(res);
+    res.json({ data: { success: true } });
+  }),
+);
+
+authRouter.get(
+  "/sessions",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const sessions = await listActiveSessions(req.userId!);
+    res.json({ data: sessions });
+  }),
+);
+
+authRouter.delete(
+  "/sessions/:sessionId",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await revokeSessionById(req.userId!, req.params.sessionId);
     res.json({ data: { success: true } });
   }),
 );

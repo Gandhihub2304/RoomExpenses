@@ -24,6 +24,8 @@ export interface SuggestedSettlement {
 
 export interface AdminDashboardData {
   viewerRole: "ADMIN";
+  selectedMonth: number;
+  selectedYear: number;
   room: { id: string; name: string; currency: string; monthlyBudget: string | null };
   totalExpenses: string;
   monthlySpend: string;
@@ -55,6 +57,8 @@ export interface AdminDashboardData {
 
 export interface RoommateDashboardData {
   viewerRole: "ROOMMATE";
+  selectedMonth: number;
+  selectedYear: number;
   room: { id: string; name: string; currency: string };
   myBalance: string;
   myPaidThisMonth: string;
@@ -72,6 +76,7 @@ export interface RoommateDashboardData {
 
 export type DashboardData = AdminDashboardData | RoommateDashboardData;
 
-export function getDashboard(roomId: string) {
-  return api.get<DashboardData>(`/rooms/${roomId}/dashboard`);
+export function getDashboard(roomId: string, month?: number, year?: number) {
+  const qs = month && year ? `?month=${month}&year=${year}` : "";
+  return api.get<DashboardData>(`/rooms/${roomId}/dashboard${qs}`);
 }

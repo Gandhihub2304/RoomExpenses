@@ -8,6 +8,15 @@ export interface BudgetCategoryLine {
   spent: string;
 }
 
+export interface BudgetMemberSplit {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  shareAmount: string;
+  paidAmount: string;
+  remainingAmount: string;
+}
+
 export interface BudgetSummary {
   exists: boolean;
   id?: string;
@@ -18,6 +27,7 @@ export interface BudgetSummary {
   totalSpend: string;
   utilizationPct: number | null;
   categories: BudgetCategoryLine[];
+  memberSplit: BudgetMemberSplit[];
 }
 
 export interface UpsertBudgetInput {
@@ -34,4 +44,11 @@ export function getCurrentBudget(roomId: string) {
 
 export function upsertBudget(roomId: string, input: UpsertBudgetInput) {
   return api.put<BudgetSummary>(`/rooms/${roomId}/budget`, input);
+}
+
+export function recordBudgetPayment(
+  roomId: string,
+  input: { budgetId: string; userId: string; paidAmount: number },
+) {
+  return api.post<BudgetSummary>(`/rooms/${roomId}/budget/payments`, input);
 }

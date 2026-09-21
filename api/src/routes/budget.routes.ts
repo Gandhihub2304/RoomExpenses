@@ -3,7 +3,7 @@ import { asyncHandler } from "@/utils/async-handler";
 import { validateBody } from "@/middleware/validate";
 import { requireAuth } from "@/middleware/require-auth";
 import { requireRoomMembership, requireRoomAdmin } from "@/middleware/require-room-membership";
-import { upsertBudgetSchema } from "@/validators/budget";
+import { upsertBudgetSchema, recordBudgetPaymentSchema } from "@/validators/budget";
 import * as budgetService from "@/services/budget.service";
 
 export const budgetRouter = Router({ mergeParams: true });
@@ -29,6 +29,22 @@ budgetRouter.put(
   validateBody(upsertBudgetSchema),
   asyncHandler(async (req, res) => {
     const data = await budgetService.upsertBudget(req.roomId!, req.userId!, req.body);
+    res.json({ data });
+  }),
+);
+
+// Roommates can record their own contribution; admins can record for anyone
+// (enforced in the service, since it depends on whose userId is being set).
+budgetRouter.post(
+  "/payments",
+  validateBody(recordBudgetPaymentSchema),
+  asyncHandler(async (req, res) => {
+    const data = await budgetService.recordMemberPayment(
+      req.roomId!,
+      req.userId!,
+      req.roomRole!,
+      req.body,
+    );
     res.json({ data });
   }),
 );

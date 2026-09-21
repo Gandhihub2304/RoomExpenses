@@ -49,3 +49,31 @@ export function resendVerification(email: string) {
 export function verifyEmail(token: string) {
   return api.post<{ success: boolean }>("/auth/verify-email", { token });
 }
+
+export function updateProfile(input: { name?: string; currencyPref?: string; themePref?: string }) {
+  return api.patch<User>("/auth/me", input);
+}
+
+export function changePassword(input: { currentPassword: string; newPassword: string }) {
+  return api.post<{ success: boolean }>("/auth/change-password", input);
+}
+
+export interface SessionInfo {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export function listSessions() {
+  return api.get<SessionInfo[]>("/auth/sessions");
+}
+
+export function revokeSession(sessionId: string) {
+  return api.delete<{ success: boolean }>(`/auth/sessions/${sessionId}`);
+}
+
+export function logoutAll() {
+  return api.post<{ success: boolean }>("/auth/logout-all");
+}

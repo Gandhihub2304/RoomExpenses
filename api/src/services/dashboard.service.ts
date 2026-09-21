@@ -2,17 +2,23 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { prisma } from "@/lib/prisma";
 import { getRoomBalanceSummary, getUserBalance } from "@/services/balance.service";
 
-function startOfMonth(date = new Date()) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-function endOfMonth(date = new Date()) {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+function monthRange(month: number, year: number) {
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 0, 23, 59, 59, 999);
+  return { start, end };
 }
 
-export async function getAdminDashboard(roomId: string) {
+function resolveMonthYear(month?: number, year?: number) {
   const now = new Date();
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
+  return {
+    month: month ?? now.getMonth() + 1,
+    year: year ?? now.getFullYear(),
+  };
+}
+
+export async function getAdminDashboard(roomId: string, month?: number, year?: number) {
+  const resolved = resolveMonthYear(month, year);
+  const { start: monthStart, end: monthEnd } = monthRange(resolved.month, resolved.year);
 
   const [
     room,
@@ -23,7 +29,7 @@ export async function getAdminDashboard(roomId: string) {
     upcomingBills,
     overdueBills,
     categoryBreakdown,
-    recentExpenses,
+    monthExpenses,
     recentActivity,
     balanceSummary,
   ] = await Promise.all([
@@ -50,16 +56,16 @@ export async function getAdminDashboard(roomId: string) {
       _sum: { amount: true },
     }),
     prisma.expense.findMany({
-      where: { roomId, status: "ACTIVE" },
-      orderBy: { createdAt: "desc" },
-      take: 6,
+      where: { roomId, status: "ACTIVE", date: { gte: monthStart, lte: monthEnd } },
+      orderBy: { date: "desc" },
+      take: 8,
       include: {
         category: true,
         payers: { include: { user: { select: { id: true, name: true } } } },
       },
     }),
     prisma.activityLog.findMany({
-      where: { roomId },
+      where: { roomId, createdAt: { gte: monthStart, lte: monthEnd } },
       orderBy: { createdAt: "desc" },
       take: 10,
       include: { actor: { select: { id: true, name: true } } },
@@ -77,6 +83,8 @@ export async function getAdminDashboard(roomId: string) {
     : null;
 
   return {
+    selectedMonth: resolved.month,
+    selectedYear: resolved.year,
     room: {
       id: room.id,
       name: room.name,
@@ -99,24 +107,28 @@ export async function getAdminDashboard(roomId: string) {
       color: c.categoryId ? categoryMap.get(c.categoryId)?.color ?? "#64748b" : "#64748b",
       total: (c._sum.amount ?? new Decimal(0)).toString(),
     })),
-    recentExpenses,
+    recentExpenses: monthExpenses,
     recentActivity,
     memberBalances: balanceSummary.memberBalances,
     suggestedSettlements: balanceSummary.suggestedTransactions,
   };
 }
 
-export async function getRoommateDashboard(roomId: string, userId: string) {
-  const now = new Date();
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
+export async function getRoommateDashboard(
+  roomId: string,
+  userId: string,
+  month?: number,
+  year?: number,
+) {
+  const resolved = resolveMonthYear(month, year);
+  const { start: monthStart, end: monthEnd } = monthRange(resolved.month, resolved.year);
 
   const [
     room,
     myBalance,
     myExpensesPaid,
     myExpenseShare,
-    recentExpenses,
+    monthExpenses,
     myPendingSettlements,
     categoryBreakdown,
   ] = await Promise.all([
@@ -131,8 +143,8 @@ export async function getRoommateDashboard(roomId: string, userId: string) {
       _sum: { share: true },
     }),
     prisma.expense.findMany({
-      where: { roomId, status: "ACTIVE" },
-      orderBy: { createdAt: "desc" },
+      where: { roomId, status: "ACTIVE", date: { gte: monthStart, lte: monthEnd } },
+      orderBy: { date: "desc" },
       take: 8,
       include: {
         category: true,
@@ -162,6 +174,8 @@ export async function getRoommateDashboard(roomId: string, userId: string) {
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
   return {
+    selectedMonth: resolved.month,
+    selectedYear: resolved.year,
     room: {
       id: room.id,
       name: room.name,
@@ -170,7 +184,7 @@ export async function getRoommateDashboard(roomId: string, userId: string) {
     myBalance,
     myPaidThisMonth: (myExpensesPaid._sum.amount ?? new Decimal(0)).toString(),
     myShareThisMonth: (myExpenseShare._sum.share ?? new Decimal(0)).toString(),
-    recentExpenses,
+    recentExpenses: monthExpenses,
     myPendingSettlements,
     categoryBreakdown: categoryBreakdown.map((c) => ({
       categoryId: c.categoryId,

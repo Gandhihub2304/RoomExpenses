@@ -10,3 +10,10 @@ export const upsertBudgetSchema = z.object({
     .default([]),
 });
 export type UpsertBudgetInput = z.infer<typeof upsertBudgetSchema>;
+
+export const recordBudgetPaymentSchema = z.object({
+  budgetId: z.string().min(1),
+  userId: z.string().min(1),
+  paidAmount: z.coerce.number().nonnegative(),
+});
+export type RecordBudgetPaymentInput = z.infer<typeof recordBudgetPaymentSchema>;

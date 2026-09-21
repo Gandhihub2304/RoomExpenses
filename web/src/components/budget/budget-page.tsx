@@ -2,15 +2,27 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { Loader2, PiggyBank, Save } from "lucide-react";
+import { Check, Loader2, PiggyBank, Save, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { FormField } from "@/components/form-field";
 import { useRoom } from "@/lib/room-context";
-import { getCurrentBudget, upsertBudget, type BudgetSummary } from "@/lib/api/budget";
+import { useAuth } from "@/lib/auth-context";
+import {
+  getCurrentBudget,
+  upsertBudget,
+  recordBudgetPayment,
+  type BudgetSummary,
+} from "@/lib/api/budget";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+function initials(name: string) {
+  return name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+}
 
 export function BudgetPage({ roomId }: { roomId: string }) {
   const { room } = useRoom();
@@ -124,6 +136,16 @@ export function BudgetPage({ roomId }: { roomId: string }) {
         </CardContent>
       </Card>
 
+      {budget.exists && budget.memberSplit.length > 0 && (
+        <BudgetMemberSplitCard
+          roomId={roomId}
+          budget={budget}
+          currency={currency}
+          isAdmin={isAdmin}
+          onUpdated={load}
+        />
+      )}
+
       {isAdmin && (
         <Card className="py-5">
           <CardHeader className="px-5">
@@ -164,5 +186,138 @@ export function BudgetPage({ roomId }: { roomId: string }) {
         </Card>
       )}
     </div>
+  );
+}
+
+function BudgetMemberSplitCard({
+  roomId,
+  budget,
+  currency,
+  isAdmin,
+  onUpdated,
+}: {
+  roomId: string;
+  budget: BudgetSummary;
+  currency: string;
+  isAdmin: boolean;
+  onUpdated: () => void;
+}) {
+  const { user } = useAuth();
+  const [editingUserId, setEditingUserId] = React.useState<string | null>(null);
+  const [editValue, setEditValue] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+
+  function startEdit(memberUserId: string, currentPaid: string) {
+    setEditingUserId(memberUserId);
+    setEditValue(currentPaid);
+  }
+
+  async function handleSave(memberUserId: string) {
+    if (!budget.id) return;
+    setSaving(true);
+    const result = await recordBudgetPayment(roomId, {
+      budgetId: budget.id,
+      userId: memberUserId,
+      paidAmount: Number(editValue) || 0,
+    });
+    setSaving(false);
+    if (!result.ok) {
+      toast.error(result.message);
+      return;
+    }
+    toast.success("Contribution updated");
+    setEditingUserId(null);
+    onUpdated();
+  }
+
+  return (
+    <Card className="py-5">
+      <CardHeader className="px-5">
+        <div className="flex items-center gap-2">
+          <Users className="size-4 text-primary" />
+          <p className="text-sm font-semibold">Split among roommates</p>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          The monthly budget divided equally — track what each person has paid.
+        </p>
+      </CardHeader>
+      <CardContent className="px-5">
+        <div className="divide-y divide-border/60">
+          {budget.memberSplit.map((m) => {
+            const canEdit = isAdmin || m.userId === user?.id;
+            const isEditing = editingUserId === m.userId;
+            const remaining = Number(m.remainingAmount);
+            const isSettled = remaining <= 0.5;
+
+            return (
+              <div key={m.userId} className="flex items-center justify-between gap-3 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar className="size-9">
+                    <AvatarFallback className="text-xs">{initials(m.name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {m.name}
+                      {m.userId === user?.id && (
+                        <span className="ml-1 text-xs text-muted-foreground">(you)</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Share: {formatMoney(m.shareAmount, currency)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-3">
+                  {isEditing ? (
+                    <>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        className="h-8 w-28"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        autoFocus
+                      />
+                      <Button size="icon-sm" disabled={saving} onClick={() => handleSave(m.userId)}>
+                        {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold tabular-nums">
+                          {formatMoney(m.paidAmount, currency)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">paid</p>
+                      </div>
+                      {isSettled ? (
+                        <Badge className="bg-success/15 text-success" variant="secondary">
+                          Settled
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          {formatMoney(m.remainingAmount, currency)} left
+                        </Badge>
+                      )}
+                      {canEdit && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => startEdit(m.userId, m.paidAmount)}
+                        >
+                          Update
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

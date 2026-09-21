@@ -51,28 +51,35 @@ function StatCard({
 export function AdminDashboardView({
   data,
   roomId,
+  monthPicker,
+  loading,
 }: {
   data: AdminDashboardData;
   roomId: string;
   onRefresh: () => void;
+  monthPicker: React.ReactNode;
+  loading?: boolean;
 }) {
   const currency = data.room.currency;
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 transition-opacity ${loading ? "opacity-60" : ""}`}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{data.room.name}</h1>
           <p className="text-sm text-muted-foreground">Admin dashboard overview</p>
         </div>
-        <Button asChild>
-          <Link href={`/r/${roomId}/expenses/new`}>Add expense</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {monthPicker}
+          <Button asChild>
+            <Link href={`/r/${roomId}/expenses/new`}>Add expense</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Total room spending" value={formatMoney(data.totalExpenses, currency)} icon={Wallet} />
-        <StatCard label="This month" value={formatMoney(data.monthlySpend, currency)} icon={TrendingUp} />
+        <StatCard label="Selected month" value={formatMoney(data.monthlySpend, currency)} icon={TrendingUp} />
         <StatCard
           label="Pending settlements"
           value={String(data.pendingSettlements)}
@@ -118,14 +125,14 @@ export function AdminDashboardView({
       <div className="grid gap-4 lg:grid-cols-5">
         <Card className="py-4 lg:col-span-3">
           <CardHeader className="flex-row items-center justify-between px-4">
-            <p className="text-sm font-semibold">Recent expenses</p>
+            <p className="text-sm font-semibold">Expenses this month</p>
             <Link href={`/r/${roomId}/expenses`} className="text-xs font-medium text-primary hover:underline">
               View all
             </Link>
           </CardHeader>
           <CardContent className="px-4">
             {data.recentExpenses.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No expenses yet.</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">No expenses in this month.</p>
             ) : (
               <div className="space-y-3">
                 {data.recentExpenses.map((expense) => (
@@ -155,14 +162,14 @@ export function AdminDashboardView({
 
         <Card className="py-4 lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between px-4">
-            <p className="text-sm font-semibold">Spending by category (this month)</p>
+            <p className="text-sm font-semibold">Spending by category</p>
             <Link href={`/r/${roomId}/analytics`} className="text-xs font-medium text-primary hover:underline">
               View all
             </Link>
           </CardHeader>
           <CardContent className="px-4">
             {data.categoryBreakdown.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No spending yet.</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">No spending in this month.</p>
             ) : (
               <div className="space-y-3">
                 {data.categoryBreakdown

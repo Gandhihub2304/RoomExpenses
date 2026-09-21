@@ -41,3 +41,17 @@ export const resendVerificationSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
 });
 export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>;
+
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(2).max(80).optional(),
+  avatarUrl: z.string().url().max(500).optional().nullable(),
+  currencyPref: z.string().trim().length(3).optional(),
+  themePref: z.enum(["light", "dark", "system"]).optional(),
+});
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: passwordSchema,
+});
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

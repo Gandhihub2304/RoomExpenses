@@ -139,6 +139,7 @@ model User {
   bills             Bill[]             @relation("BillCreatedBy")
   createdGoals      Goal[]             @relation("GoalCreatedBy")
   goalContributions GoalContribution[] @relation("GoalContributionAddedBy")
+  budgetPayments    BudgetMemberPayment[] @relation("BudgetMemberPaymentUser")
 
   @@index([email])
 }
@@ -398,7 +399,8 @@ model Budget {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  categories  BudgetCategory[]
+  categories     BudgetCategory[]
+  memberPayments BudgetMemberPayment[]
 
   @@unique([roomId, month, year])
 }
@@ -412,6 +414,22 @@ model BudgetCategory {
   amount     Decimal  @db.Decimal(12, 2)
 
   @@unique([budgetId, categoryId])
+}
+
+// Tracks each roommate's equal share of the room budget and how much
+// they've paid toward it, so the budget page can show paid/remaining
+// per person alongside the room-wide total.
+model BudgetMemberPayment {
+  id         String   @id @default(cuid())
+  budgetId   String
+  budget     Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation("BudgetMemberPaymentUser", fields: [userId], references: [id])
+  paidAmount Decimal  @default(0) @db.Decimal(12, 2)
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  @@unique([budgetId, userId])
 }
 
 // ---------------------------------------------------------------------------

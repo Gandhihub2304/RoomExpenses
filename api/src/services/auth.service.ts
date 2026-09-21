@@ -4,7 +4,7 @@ import { hashPassword, verifyPassword } from "@/utils/password";
 import { signAccessToken, generateRefreshToken, generateSecureToken } from "@/utils/tokens";
 import { sendVerificationEmail, sendPasswordResetEmail } from "@/services/email.service";
 import { env } from "@/config/env";
-import type { RegisterInput, LoginInput } from "@/validators/auth";
+import type { RegisterInput, LoginInput, UpdateProfileInput } from "@/validators/auth";
 
 const REFRESH_TTL_MS = () => env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000;
 
@@ -35,6 +35,8 @@ export async function registerUser(input: RegisterInput) {
   return user;
 }
 
+const MAX_ACTIVE_SESSIONS = 5;
+
 export async function issueSession(
   userId: string,
   email: string,
@@ -52,6 +54,21 @@ export async function issueSession(
       expiresAt: new Date(Date.now() + REFRESH_TTL_MS()),
     },
   });
+
+  // Cap active sessions per user so logging in repeatedly (or from many
+  // devices) doesn't leave an ever-growing list of "active" sessions.
+  const activeSessions = await prisma.session.findMany({
+    where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+    skip: MAX_ACTIVE_SESSIONS,
+  });
+  if (activeSessions.length > 0) {
+    await prisma.session.updateMany({
+      where: { id: { in: activeSessions.map((s) => s.id) } },
+      data: { revokedAt: new Date() },
+    });
+  }
 
   return { accessToken, refreshToken };
 }
@@ -165,4 +182,47 @@ export async function resetPassword(token: string, newPassword: string) {
       data: { revokedAt: new Date() },
     }),
   ]);
+}
+
+export async function updateProfile(userId: string, input: UpdateProfileInput) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: input,
+  });
+}
+
+export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  if (!user.passwordHash) {
+    throw ApiError.badRequest("This account doesn't have a password set (signed in via Google).");
+  }
+
+  const valid = await verifyPassword(currentPassword, user.passwordHash);
+  if (!valid) {
+    throw ApiError.unauthorized("Current password is incorrect");
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
+    prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } }),
+  ]);
+}
+
+export async function listActiveSessions(userId: string) {
+  return prisma.session.findMany({
+    where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+    select: { id: true, userAgent: true, ipAddress: true, createdAt: true, expiresAt: true },
+  });
+}
+
+export async function revokeSessionById(userId: string, sessionId: string) {
+  const session = await prisma.session.findUnique({ where: { id: sessionId } });
+  if (!session || session.userId !== userId) {
+    throw ApiError.notFound("Session not found");
+  }
+  await prisma.session.update({ where: { id: sessionId }, data: { revokedAt: new Date() } });
 }
