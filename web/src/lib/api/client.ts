@@ -1,4 +1,8 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+// Relative by default so requests go through this app's own origin (see the
+// rewrite in next.config.ts) and stay first-party for cookies. Only set
+// NEXT_PUBLIC_API_URL if you intentionally want the browser to call the
+// backend directly (breaks cross-site cookie persistence on some browsers).
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 export type ApiResult<T> =
   | { ok: true; data: T }
