@@ -23,6 +23,7 @@ async function request<T>(
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       credentials: "include",
+      cache: "no-store",
       headers: { "Content-Type": "application/json", ...init.headers },
       ...init,
     });

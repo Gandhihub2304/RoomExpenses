@@ -25,6 +25,14 @@ export async function notifyUser(params: {
   return notification;
 }
 
+// Lighter-weight than notifyRoomMembers: signals connected clients in a room
+// to refetch, without creating a Notification row for every member. Use this
+// when an action already sends a targeted notifyUser and just needs the rest
+// of the room's UI to go live-update too (e.g. a settlement being confirmed).
+export function broadcastRoomActivity(roomId: string, type: NotificationType) {
+  getIO()?.to(`room:${roomId}`).emit("room:activity", { roomId, type });
+}
+
 export async function notifyRoomMembers(params: {
   roomId: string;
   excludeUserId?: string;

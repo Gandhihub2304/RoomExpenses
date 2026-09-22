@@ -2,7 +2,7 @@ import { RoomRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/utils/api-error";
 import { logActivity } from "@/services/activity-log.service";
-import { notifyUser } from "@/services/notification.service";
+import { notifyUser, broadcastRoomActivity } from "@/services/notification.service";
 import { getRoomBalanceSummary } from "@/services/balance.service";
 import type { CreateSettlementInput, UpdateSettlementStatusInput } from "@/validators/settlement";
 
@@ -90,6 +90,7 @@ export async function createSettlement(roomId: string, actorId: string, input: C
     body: `A payment of ${settlement.amount.toString()} was recorded. Confirm to complete the settlement.`,
     metadata: { settlementId: settlement.id },
   });
+  broadcastRoomActivity(roomId, "SETTLEMENT_REQUESTED");
 
   return settlement;
 }
@@ -143,6 +144,7 @@ export async function updateSettlementStatus(
       metadata: { settlementId },
     });
   }
+  broadcastRoomActivity(roomId, "SETTLEMENT_COMPLETED");
 
   return updated;
 }

@@ -35,6 +35,13 @@ app.use(cookieParser());
 app.use(morgan(isProd ? "combined" : "dev"));
 app.use(apiRateLimit);
 
+// API responses are per-user and change on every write — never let a proxy,
+// CDN, or the browser cache them, or clients can end up staring at stale data.
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  next();
+});
+
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", time: new Date().toISOString() });
 });
