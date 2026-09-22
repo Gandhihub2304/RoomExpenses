@@ -5,6 +5,7 @@ import { Bell, LogOut, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { RoomSwitcher } from "@/components/room/room-switcher";
+import { RoomMobileNav } from "@/components/room/room-mobile-nav";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +29,10 @@ export function RoomHeader({ roomId }: { roomId: string }) {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-        <RoomSwitcher roomId={roomId} roomName={room?.name ?? "Loading..."} />
+        <div className="flex items-center gap-1">
+          <RoomMobileNav roomId={roomId} />
+          <RoomSwitcher roomId={roomId} roomName={room?.name ?? "Loading..."} />
+        </div>
 
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="relative" asChild>

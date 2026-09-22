@@ -16,12 +16,18 @@ import { PasswordInput } from "@/components/password-input";
 import { GoogleButton } from "@/components/auth/google-button";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { login } from "@/lib/api/auth";
+import { joinRoom } from "@/lib/api/rooms";
 import { useAuth } from "@/lib/auth-context";
+import { savePendingInvite, getPendingInvite, clearPendingInvite } from "@/lib/pending-invite";
 
-export function LoginForm() {
+export function LoginForm({ inviteCode }: { inviteCode?: string }) {
   const router = useRouter();
   const { refresh } = useAuth();
   const [serverError, setServerError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (inviteCode) savePendingInvite(inviteCode);
+  }, [inviteCode]);
 
   const {
     register,
@@ -42,8 +48,21 @@ export function LoginForm() {
       toast.error(result.message);
       return;
     }
-    toast.success("Welcome back!");
     await refresh();
+
+    const pendingInvite = getPendingInvite();
+    if (pendingInvite) {
+      clearPendingInvite();
+      const joinResult = await joinRoom(pendingInvite);
+      if (joinResult.ok) {
+        toast.success("Welcome! You've joined the room.");
+        router.push(`/r/${joinResult.data.roomId}`);
+        return;
+      }
+      toast.error(joinResult.message);
+    } else {
+      toast.success("Welcome back!");
+    }
     router.push("/rooms");
   }
 

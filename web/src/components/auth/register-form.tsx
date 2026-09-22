@@ -17,10 +17,15 @@ import { GoogleButton } from "@/components/auth/google-button";
 import { PasswordStrength } from "@/components/auth/password-strength";
 import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
 import { register as registerUser } from "@/lib/api/auth";
+import { savePendingInvite } from "@/lib/pending-invite";
 
-export function RegisterForm() {
+export function RegisterForm({ inviteCode }: { inviteCode?: string }) {
   const router = useRouter();
   const [serverError, setServerError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (inviteCode) savePendingInvite(inviteCode);
+  }, [inviteCode]);
 
   const {
     register,
@@ -172,7 +177,10 @@ export function RegisterForm() {
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-primary hover:underline">
+        <Link
+          href={inviteCode ? `/login?invite=${encodeURIComponent(inviteCode)}` : "/login"}
+          className="font-medium text-primary hover:underline"
+        >
           Log in
         </Link>
       </p>

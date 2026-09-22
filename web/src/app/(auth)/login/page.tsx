@@ -5,6 +5,8 @@ export const metadata: Metadata = {
   title: "Log in",
 };
 
-export default function LoginPage() {
-  return <LoginForm />;
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+  const params = await searchParams;
+  const invite = typeof params.invite === "string" ? params.invite : undefined;
+  return <LoginForm inviteCode={invite} />;
 }
