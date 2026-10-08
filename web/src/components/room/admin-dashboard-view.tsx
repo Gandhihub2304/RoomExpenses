@@ -81,10 +81,15 @@ export function AdminDashboardView({
         <StatCard label="Total room spending" value={formatMoney(data.totalExpenses, currency)} icon={Wallet} />
         <StatCard label="Selected month" value={formatMoney(data.monthlySpend, currency)} icon={TrendingUp} />
         <StatCard
-          label="Pending settlements"
-          value={String(data.pendingSettlements)}
+          label="Budget still due"
+          value={data.budgetDue === null ? "—" : formatMoney(data.budgetDue, currency)}
           icon={Users}
-          caption={`${data.memberCount} roommates`}
+          tone={data.budgetDue !== null && Number(data.budgetDue) > 0.5 ? "warning" : undefined}
+          caption={
+            data.budgetDue === null
+              ? "No budget this month"
+              : `${data.membersSettled} of ${data.memberCount} roommates settled`
+          }
         />
         <StatCard
           label="Overdue bills"

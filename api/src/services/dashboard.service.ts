@@ -1,6 +1,7 @@
 import { Decimal } from "@prisma/client/runtime/library";
 import { prisma } from "@/lib/prisma";
 import { getRoomBalanceSummary, getUserBalance } from "@/services/balance.service";
+import { getBudgetForMonth } from "@/services/budget.service";
 
 function monthRange(month: number, year: number) {
   const start = new Date(year, month - 1, 1);
@@ -73,6 +74,12 @@ export async function getAdminDashboard(roomId: string, month?: number, year?: n
     getRoomBalanceSummary(roomId),
   ]);
 
+  const budgetSplit = await getBudgetForMonth(roomId, resolved.month, resolved.year);
+  const budgetDue = budgetSplit.exists
+    ? budgetSplit.memberSplit.reduce((sum, m) => sum.plus(m.remainingAmount), new Decimal(0))
+    : null;
+  const membersSettled = budgetSplit.memberSplit.filter((m) => new Decimal(m.remainingAmount).lessThanOrEqualTo(0.5)).length;
+
   const categoryIds = categoryBreakdown.map((c) => c.categoryId).filter(Boolean) as string[];
   const [categories, monthBudget] = await Promise.all([
     prisma.category.findMany({ where: { id: { in: categoryIds } } }),
@@ -107,6 +114,8 @@ export async function getAdminDashboard(roomId: string, month?: number, year?: n
     budgetUtilizationPct,
     memberCount,
     pendingSettlements,
+    budgetDue: budgetDue?.toString() ?? null,
+    membersSettled,
     upcomingBills,
     overdueBillsCount: overdueBills,
     categoryBreakdown: categoryBreakdown.map((c) => ({
@@ -178,8 +187,12 @@ export async function getRoommateDashboard(
   ]);
 
   const categoryIds = categoryBreakdown.map((c) => c.categoryId).filter(Boolean) as string[];
-  const categories = await prisma.category.findMany({ where: { id: { in: categoryIds } } });
+  const [categories, budgetSplit] = await Promise.all([
+    prisma.category.findMany({ where: { id: { in: categoryIds } } }),
+    getBudgetForMonth(roomId, resolved.month, resolved.year),
+  ]);
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
+  const mine = budgetSplit.exists ? budgetSplit.memberSplit.find((m) => m.userId === userId) : undefined;
 
   return {
     selectedMonth: resolved.month,
@@ -189,6 +202,16 @@ export async function getRoommateDashboard(
       name: room.name,
       currency: room.currency,
     },
+    myBudget: mine
+      ? {
+          share: mine.shareAmount,
+          paid: mine.paidAmount,
+          expensePaid: mine.expensePaidAmount,
+          contributed: mine.contributedAmount,
+          remaining: mine.remainingAmount,
+          extra: mine.extraAmount,
+        }
+      : null,
     myBalance,
     myPaidThisMonth: (myExpensesPaid._sum.amount ?? new Decimal(0)).toString(),
     myShareThisMonth: (myExpenseShare._sum.share ?? new Decimal(0)).toString(),

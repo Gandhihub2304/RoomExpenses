@@ -21,9 +21,12 @@ export function RoommateDashboardView({
 }) {
   const { user } = useAuth();
   const currency = data.room.currency;
-  const balance = Number(data.myBalance);
-  const isOwed = balance > 0;
-  const isEven = Math.abs(balance) < 0.5;
+  const budget = data.myBudget;
+  const remaining = Number(budget?.remaining ?? 0);
+  const progress =
+    budget && Number(budget.share) > 0
+      ? Math.min(100, (Number(budget.contributed) / Number(budget.share)) * 100)
+      : 0;
 
   return (
     <div className={`space-y-6 transition-opacity ${loading ? "opacity-60" : ""}`}>
@@ -40,22 +43,52 @@ export function RoommateDashboardView({
         </div>
       </div>
 
-      <Card className="overflow-hidden border-none py-0 bg-primary text-primary-foreground">
-        <CardContent className="px-6 py-6">
-          <p className="text-sm text-primary-foreground/80">Your balance</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">
-            {formatMoney(Math.abs(balance), currency)}
-          </p>
-          <p className="mt-1 text-sm text-primary-foreground/80">
-            {isEven ? "You're all settled up" : isOwed ? "owed to you" : "you owe the room"}
-          </p>
-        </CardContent>
-      </Card>
+      <Link href={`/r/${roomId}/settlements`} className="block">
+        <Card className="overflow-hidden border-none py-0 bg-primary text-primary-foreground">
+          <CardContent className="px-6 py-6">
+            {budget ? (
+              <>
+                <p className="text-sm text-primary-foreground/80">Your share this month</p>
+                <p className="mt-1 text-3xl font-semibold tabular-nums">
+                  {remaining > 0.5 ? formatMoney(remaining, currency) : "Settled"}
+                </p>
+                <p className="mt-1 text-sm text-primary-foreground/80">
+                  {remaining > 0.5
+                    ? `left to pay of your ${formatMoney(budget.share, currency)} share`
+                    : Number(budget.extra) > 0.5
+                      ? `You've put in ${formatMoney(budget.extra, currency)} more than your share`
+                      : "You've paid your full share"}
+                </p>
+                <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-primary-foreground/20">
+                  <div className="h-full rounded-full bg-primary-foreground" style={{ width: `${progress}%` }} />
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-primary-foreground/80">Your share this month</p>
+                <p className="mt-1 text-2xl font-semibold">No budget set yet</p>
+                <p className="mt-1 text-sm text-primary-foreground/80">
+                  Your share will appear here once the admin sets this month&apos;s budget.
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </Link>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <Card className="gap-2 py-4">
           <CardHeader className="flex-row items-center justify-between px-4">
-            <span className="text-xs font-medium text-muted-foreground">You paid</span>
+            <span className="text-xs font-medium text-muted-foreground">Paid directly</span>
+            <Wallet className="size-4 text-success" />
+          </CardHeader>
+          <CardContent className="px-4">
+            <div className="text-xl font-semibold tabular-nums">{formatMoney(budget?.paid ?? 0, currency)}</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4">
+          <CardHeader className="flex-row items-center justify-between px-4">
+            <span className="text-xs font-medium text-muted-foreground">Expenses you paid</span>
             <ArrowUpFromLine className="size-4 text-success" />
           </CardHeader>
           <CardContent className="px-4">
@@ -64,45 +97,18 @@ export function RoommateDashboardView({
             </div>
           </CardContent>
         </Card>
-        <Card className="gap-2 py-4">
+        <Card className="col-span-2 gap-2 py-4 lg:col-span-1">
           <CardHeader className="flex-row items-center justify-between px-4">
-            <span className="text-xs font-medium text-muted-foreground">Your share</span>
+            <span className="text-xs font-medium text-muted-foreground">Your budget share</span>
             <ArrowDownToLine className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="px-4">
             <div className="text-xl font-semibold tabular-nums">
-              {formatMoney(data.myShareThisMonth, currency)}
+              {budget ? formatMoney(budget.share, currency) : "—"}
             </div>
           </CardContent>
         </Card>
-        <Card className="col-span-2 gap-2 py-4 lg:col-span-1">
-          <CardHeader className="flex-row items-center justify-between px-4">
-            <span className="text-xs font-medium text-muted-foreground">Pending settlements</span>
-            <Wallet className="size-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="px-4">
-            <div className="text-xl font-semibold tabular-nums">{data.myPendingSettlements.length}</div>
-          </CardContent>
-        </Card>
       </div>
-
-      {data.myPendingSettlements.length > 0 && (
-        <Card className="py-4">
-          <CardHeader className="px-4">
-            <p className="text-sm font-semibold">Your pending settlements</p>
-          </CardHeader>
-          <CardContent className="space-y-3 px-4">
-            {data.myPendingSettlements.map((s) => (
-              <div key={s.id} className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {s.fromUser.name} → {s.toUser.name}
-                </span>
-                <span className="font-semibold tabular-nums">{formatMoney(s.amount, currency)}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="lg:col-span-2">

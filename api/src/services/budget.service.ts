@@ -13,45 +13,52 @@ function monthRange(year: number, month: number) {
 }
 
 /**
- * Divides `totalAmount` equally across the room's active members and
- * joins in whatever each member has already paid toward this budget.
+ * Divides `totalAmount` equally across the room's active members. Each
+ * member's contribution is the money they handed over (paidAmount) plus
+ * every room expense they paid for during the budget month — buying
+ * groceries for the room counts the same as paying cash into the budget.
  */
-async function getMemberSplit(roomId: string, budgetId: string | null, totalAmount: Decimal | null) {
-  const members = await prisma.roomMembership.findMany({
-    where: { roomId, status: "ACTIVE" },
-    include: { user: { select: { id: true, name: true, avatarUrl: true } } },
-    orderBy: { joinedAt: "asc" },
-  });
+async function getMemberSplit(
+  roomId: string,
+  budgetId: string | null,
+  totalAmount: Decimal | null,
+  range: { start: Date; end: Date },
+) {
+  const [members, payments, expensePaid] = await Promise.all([
+    prisma.roomMembership.findMany({
+      where: { roomId, status: "ACTIVE" },
+      include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+      orderBy: { joinedAt: "asc" },
+    }),
+    budgetId ? prisma.budgetMemberPayment.findMany({ where: { budgetId } }) : [],
+    prisma.expensePayer.groupBy({
+      by: ["userId"],
+      where: { expense: { roomId, status: "ACTIVE", date: { gte: range.start, lte: range.end } } },
+      _sum: { amount: true },
+    }),
+  ]);
 
-  if (!totalAmount || members.length === 0) {
-    return members.map((m) => ({
-      userId: m.userId,
-      name: m.user.name,
-      avatarUrl: m.user.avatarUrl,
-      shareAmount: "0",
-      paidAmount: "0",
-      remainingAmount: "0",
-    }));
-  }
-
-  const shares = splitEqually(totalAmount, members.length);
-
-  const payments = budgetId
-    ? await prisma.budgetMemberPayment.findMany({ where: { budgetId } })
-    : [];
   const paymentMap = new Map(payments.map((p) => [p.userId, p.paidAmount]));
+  const expenseMap = new Map(expensePaid.map((e) => [e.userId, e._sum.amount ?? new Decimal(0)]));
+  const shares =
+    totalAmount && members.length > 0 ? splitEqually(totalAmount, members.length) : null;
 
   return members.map((m, i) => {
-    const share = shares[i];
+    const share = shares?.[i] ?? new Decimal(0);
     const paid = paymentMap.get(m.userId) ?? new Decimal(0);
-    const remaining = share.minus(paid);
+    const expenses = expenseMap.get(m.userId) ?? new Decimal(0);
+    const contributed = paid.plus(expenses);
+    const remaining = share.minus(contributed);
     return {
       userId: m.userId,
       name: m.user.name,
       avatarUrl: m.user.avatarUrl,
       shareAmount: share.toString(),
       paidAmount: paid.toString(),
+      expensePaidAmount: expenses.toString(),
+      contributedAmount: contributed.toString(),
       remainingAmount: (remaining.greaterThan(0) ? remaining : new Decimal(0)).toString(),
+      extraAmount: (remaining.lessThan(0) ? remaining.abs() : new Decimal(0)).toString(),
     };
   });
 }
@@ -82,7 +89,7 @@ export async function getBudgetForMonth(roomId: string, month: number, year: num
   const totalSpend = totalSpendAgg._sum.amount ?? new Decimal(0);
 
   if (!budget) {
-    const memberSplit = await getMemberSplit(roomId, null, null);
+    const memberSplit = await getMemberSplit(roomId, null, null, { start, end });
     return {
       exists: false,
       month,
@@ -100,7 +107,7 @@ export async function getBudgetForMonth(roomId: string, month: number, year: num
     ? totalSpend.div(budget.totalAmount).mul(100).toNumber()
     : 0;
 
-  const memberSplit = await getMemberSplit(roomId, budget.id, budget.totalAmount);
+  const memberSplit = await getMemberSplit(roomId, budget.id, budget.totalAmount, { start, end });
 
   return {
     exists: true,

@@ -33,6 +33,9 @@ export interface AdminDashboardData {
   budgetUtilizationPct: number | null;
   memberCount: number;
   pendingSettlements: number;
+  /** Total still owed toward this month's budget; null when no budget is set. */
+  budgetDue: string | null;
+  membersSettled: number;
   upcomingBills: { id: string; title: string; amount: string; dueDate: string }[];
   overdueBillsCount: number;
   categoryBreakdown: CategoryBreakdown[];
@@ -61,6 +64,14 @@ export interface RoommateDashboardData {
   selectedYear: number;
   room: { id: string; name: string; currency: string };
   myBalance: string;
+  myBudget: {
+    share: string;
+    paid: string;
+    expensePaid: string;
+    contributed: string;
+    remaining: string;
+    extra: string;
+  } | null;
   myPaidThisMonth: string;
   myShareThisMonth: string;
   recentExpenses: AdminDashboardData["recentExpenses"];

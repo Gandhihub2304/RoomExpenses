@@ -13,8 +13,15 @@ export interface BudgetMemberSplit {
   name: string;
   avatarUrl: string | null;
   shareAmount: string;
+  /** Money handed over toward the budget (recorded by hand). */
   paidAmount: string;
+  /** Room expenses this member paid for during the budget month. */
+  expensePaidAmount: string;
+  /** paidAmount + expensePaidAmount */
+  contributedAmount: string;
   remainingAmount: string;
+  /** How much they've contributed beyond their share. */
+  extraAmount: string;
 }
 
 export interface BudgetSummary {
@@ -40,6 +47,10 @@ export interface UpsertBudgetInput {
 
 export function getCurrentBudget(roomId: string) {
   return api.get<BudgetSummary>(`/rooms/${roomId}/budget`);
+}
+
+export function getBudgetForMonth(roomId: string, month: number, year: number) {
+  return api.get<BudgetSummary>(`/rooms/${roomId}/budget?month=${month}&year=${year}`);
 }
 
 export function upsertBudget(roomId: string, input: UpsertBudgetInput) {
