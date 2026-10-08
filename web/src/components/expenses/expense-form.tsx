@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FormField } from "@/components/form-field";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRoom } from "@/lib/room-context";
+import { useAuth } from "@/lib/auth-context";
 import { listMembers, type RoomMemberDetail } from "@/lib/api/members";
 import {
   listCategories,
@@ -21,8 +22,11 @@ import {
   updateExpense,
   getExpense,
   type ExpenseCategory,
+  type ExpenseFunding,
   type CreateExpenseInput,
 } from "@/lib/api/expenses";
+import { getBudgetForMonth, type BudgetSummary } from "@/lib/api/budget";
+import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const SPLIT_METHODS = [
@@ -37,6 +41,8 @@ type SplitMethod = (typeof SPLIT_METHODS)[number]["value"];
 export function ExpenseForm({ roomId, expenseId }: { roomId: string; expenseId?: string }) {
   const router = useRouter();
   const { room } = useRoom();
+  const { user } = useAuth();
+  const currentUserId = user?.id;
   const currency = room?.currency ?? "INR";
   const isEditing = !!expenseId;
 
@@ -54,7 +60,33 @@ export function ExpenseForm({ roomId, expenseId }: { roomId: string; expenseId?:
   const [payerId, setPayerId] = React.useState<string>("");
   const [participantIds, setParticipantIds] = React.useState<Set<string>>(new Set());
   const [customValues, setCustomValues] = React.useState<Record<string, string>>({});
+  const [funding, setFunding] = React.useState<ExpenseFunding>("PERSONAL");
+  const [originalFunding, setOriginalFunding] = React.useState<ExpenseFunding | null>(null);
+  const [monthBudget, setMonthBudget] = React.useState<BudgetSummary | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
+
+  const budgetMonth = Number(date.slice(5, 7));
+  const budgetYear = Number(date.slice(0, 4));
+  React.useEffect(() => {
+    if (!budgetMonth || !budgetYear) return;
+    let cancelled = false;
+    getBudgetForMonth(roomId, budgetMonth, budgetYear).then((r) => {
+      if (!cancelled) setMonthBudget(r.ok ? r.data : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [roomId, budgetMonth, budgetYear]);
+
+  const payerSplit = monthBudget?.exists
+    ? monthBudget.memberSplit.find((m) => m.userId === payerId)
+    : undefined;
+  const payerShareFull = !!payerSplit && Number(payerSplit.remainingAmount) <= 0.5;
+  // Until the payer's share is fully paid, whatever they spend for the room
+  // counts toward that share — the room/personal choice only applies after.
+  const canChooseFunding = payerShareFull || originalFunding === "ROOM";
+  const effectiveFunding: ExpenseFunding = canChooseFunding ? funding : "PERSONAL";
+  const payerName = members.find((m) => m.userId === payerId)?.user.name ?? "The payer";
 
   React.useEffect(() => {
     async function load() {
@@ -79,6 +111,8 @@ export function ExpenseForm({ roomId, expenseId }: { roomId: string; expenseId?:
           setCategoryId(e.category?.id ?? "");
           setDate(e.date.slice(0, 10));
           setSplitMethod(e.splitMethod);
+          setFunding(e.funding);
+          setOriginalFunding(e.funding);
           setNotes(e.notes ?? "");
           setPayerId(e.payers[0]?.user.id ?? "");
           setParticipantIds(new Set(e.participants.map((p) => p.user.id)));
@@ -92,12 +126,13 @@ export function ExpenseForm({ roomId, expenseId }: { roomId: string; expenseId?:
         }
       } else if (membersRes.ok) {
         // Default payer to the current user if present, else first member.
-        setPayerId(membersRes.data[0]?.userId ?? "");
+        const me = membersRes.data.find((m) => m.userId === currentUserId);
+        setPayerId(me?.userId ?? membersRes.data[0]?.userId ?? "");
       }
       setLoaded(true);
     }
     load();
-  }, [roomId, expenseId]);
+  }, [roomId, expenseId, currentUserId]);
 
   function toggleParticipant(userId: string) {
     setParticipantIds((prev) => {
@@ -143,6 +178,7 @@ export function ExpenseForm({ roomId, expenseId }: { roomId: string; expenseId?:
       categoryId: categoryId || undefined,
       date: new Date(date).toISOString(),
       splitMethod,
+      funding: effectiveFunding,
       notes: notes.trim() || undefined,
       payers: [{ userId: payerId, amount: numericAmount }],
     };
@@ -248,6 +284,60 @@ export function ExpenseForm({ roomId, expenseId }: { roomId: string; expenseId?:
             </select>
           </FormField>
         </div>
+
+        {canChooseFunding ? (
+          <div>
+            <Label className="mb-1 block">Whose money paid for this?</Label>
+            <p className="mb-2 text-xs text-muted-foreground">
+              {payerName} has already paid their full share this month.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2" role="radiogroup">
+              {(
+                [
+                  {
+                    value: "ROOM",
+                    label: "Room money",
+                    help: `Paid from the money everyone put in.${
+                      monthBudget?.roomMoneyLeft !== undefined
+                        ? ` ${formatMoney(monthBudget.roomMoneyLeft, currency)} left.`
+                        : ""
+                    }`,
+                  },
+                  {
+                    value: "PERSONAL",
+                    label: "Personal money",
+                    help: `Paid from ${payerName}'s own pocket — shows as extra in Settlements.`,
+                  },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={funding === opt.value}
+                  onClick={() => setFunding(opt.value)}
+                  className={cn(
+                    "rounded-xl border p-3 text-left transition-colors",
+                    funding === opt.value
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border/60 hover:bg-muted/50",
+                  )}
+                >
+                  <span className="block text-sm font-medium">{opt.label}</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">{opt.help}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : payerSplit ? (
+          <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+            This counts toward {payerName}&apos;s share for this month —{" "}
+            <span className="font-medium text-destructive">
+              {formatMoney(payerSplit.remainingAmount, currency)} still due
+            </span>
+            .
+          </p>
+        ) : null}
 
         <div>
           <Label className="mb-2 block">Split method</Label>

@@ -19,6 +19,8 @@ export interface ExpenseCategory {
   color: string;
 }
 
+export type ExpenseFunding = "PERSONAL" | "ROOM";
+
 export interface Expense {
   id: string;
   title: string;
@@ -26,6 +28,8 @@ export interface Expense {
   amount: string;
   date: string;
   splitMethod: "EQUAL" | "PERCENTAGE" | "EXACT" | "SHARES" | "PAYER_ONLY";
+  /** PERSONAL = payer's own money; ROOM = paid from money collected into the room budget. */
+  funding: ExpenseFunding;
   status: string;
   notes: string | null;
   category: ExpenseCategory | null;
@@ -83,6 +87,7 @@ export interface CreateExpenseInput {
   categoryId?: string;
   date?: string;
   splitMethod: "EQUAL" | "PERCENTAGE" | "EXACT" | "SHARES" | "PAYER_ONLY";
+  funding: ExpenseFunding;
   notes?: string;
   payers: CreateExpensePayer[];
   participantIds?: string[];

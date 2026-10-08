@@ -104,7 +104,7 @@ export function BudgetPage({ roomId }: { roomId: string }) {
           {budget.exists ? (
             <>
               <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-semibold tabular-nums">
+                <span className="text-2xl font-semibold tabular-nums text-destructive">
                   {formatMoney(budget.totalSpend, currency)}
                 </span>
                 <span className="text-sm text-muted-foreground">

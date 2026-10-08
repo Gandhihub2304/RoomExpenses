@@ -19,12 +19,14 @@ function StatCard({
   icon: Icon,
   caption,
   tone,
+  valueClassName,
 }: {
   label: string;
   value: string;
   icon: React.ComponentType<{ className?: string }>;
   caption?: string;
   tone?: "warning" | "destructive";
+  valueClassName?: string;
 }) {
   return (
     <Card className="gap-2 py-4">
@@ -41,7 +43,7 @@ function StatCard({
         />
       </CardHeader>
       <CardContent className="px-4">
-        <div className="text-xl font-semibold tabular-nums">{value}</div>
+        <div className={`text-xl font-semibold tabular-nums ${valueClassName ?? ""}`}>{value}</div>
         {caption && <p className="mt-1 text-xs text-muted-foreground">{caption}</p>}
       </CardContent>
     </Card>
@@ -78,13 +80,26 @@ export function AdminDashboardView({
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Total room spending" value={formatMoney(data.totalExpenses, currency)} icon={Wallet} />
-        <StatCard label="Selected month" value={formatMoney(data.monthlySpend, currency)} icon={TrendingUp} />
+        <StatCard
+          label="Total room spending"
+          value={formatMoney(data.totalExpenses, currency)}
+          icon={Wallet}
+          valueClassName="text-destructive"
+        />
+        <StatCard
+          label="Spent this month"
+          value={formatMoney(data.monthlySpend, currency)}
+          icon={TrendingUp}
+          valueClassName="text-destructive"
+        />
         <StatCard
           label="Budget still due"
           value={data.budgetDue === null ? "—" : formatMoney(data.budgetDue, currency)}
           icon={Users}
           tone={data.budgetDue !== null && Number(data.budgetDue) > 0.5 ? "warning" : undefined}
+          valueClassName={
+            data.budgetDue === null ? undefined : Number(data.budgetDue) > 0.5 ? "text-destructive" : "text-success"
+          }
           caption={
             data.budgetDue === null
               ? "No budget this month"
@@ -120,8 +135,19 @@ export function AdminDashboardView({
               />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              {formatMoney(data.monthlySpend, currency)} of {formatMoney(data.room.monthlyBudget, currency)} spent
-              {data.remainingBudget && ` · ${formatMoney(data.remainingBudget, currency)} remaining`}
+              <span className="font-medium text-destructive">{formatMoney(data.monthlySpend, currency)}</span> of{" "}
+              {formatMoney(data.room.monthlyBudget, currency)} spent
+              {data.remainingBudget && (
+                <>
+                  {" · "}
+                  <span
+                    className={`font-medium ${Number(data.remainingBudget) < 0 ? "text-destructive" : "text-success"}`}
+                  >
+                    {formatMoney(data.remainingBudget, currency)}
+                  </span>{" "}
+                  {Number(data.remainingBudget) < 0 ? "over budget" : "remaining"}
+                </>
+              )}
             </p>
           </CardContent>
         </Card>
@@ -154,8 +180,8 @@ export function AdminDashboardView({
                           {expense.category.name}
                         </Badge>
                       )}
-                      <span className="text-sm font-semibold tabular-nums">
-                        {formatMoney(expense.amount, currency)}
+                      <span className="text-sm font-semibold tabular-nums text-destructive">
+                        −{formatMoney(expense.amount, currency)}
                       </span>
                     </div>
                   </div>

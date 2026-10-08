@@ -128,6 +128,16 @@ export function ExpensesList({ roomId }: { roomId: string }) {
                         {expense.category.name}
                       </Badge>
                     )}
+                    <Badge
+                      variant="secondary"
+                      className={
+                        expense.funding === "ROOM"
+                          ? "shrink-0 bg-primary/10 text-xs text-primary"
+                          : "shrink-0 bg-muted text-xs text-muted-foreground"
+                      }
+                    >
+                      {expense.funding === "ROOM" ? "Room money" : "Personal"}
+                    </Badge>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Paid by {expense.payers.map((p) => p.user.name).join(", ")} · {formatDate(expense.date)} ·{" "}
@@ -136,8 +146,8 @@ export function ExpensesList({ roomId }: { roomId: string }) {
                 </div>
 
                 <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
-                  <span className="text-lg font-semibold tabular-nums">
-                    {formatMoney(expense.amount, currency)}
+                  <span className="text-lg font-semibold tabular-nums text-destructive">
+                    −{formatMoney(expense.amount, currency)}
                   </span>
 
                   {isAdmin && (

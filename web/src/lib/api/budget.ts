@@ -32,6 +32,11 @@ export interface BudgetSummary {
   totalAmount: string | null;
   warningPct: number;
   totalSpend: string;
+  /** Cash members handed over toward the budget (only when the budget exists). */
+  cashCollected?: string;
+  /** Expenses paid out of that collected cash. */
+  roomFundedSpend?: string;
+  roomMoneyLeft?: string;
   utilizationPct: number | null;
   categories: BudgetCategoryLine[];
   memberSplit: BudgetMemberSplit[];

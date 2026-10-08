@@ -113,16 +113,25 @@ export function BudgetMemberSplitList({
             <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
               <div>
                 <p className="text-muted-foreground">Paid</p>
-                <p className="font-medium tabular-nums">{formatMoney(m.paidAmount, currency)}</p>
+                <p className={cn("font-medium tabular-nums", Number(m.paidAmount) > 0 && "text-success")}>
+                  {formatMoney(m.paidAmount, currency)}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Expenses paid</p>
-                <p className="font-medium tabular-nums">{formatMoney(m.expensePaidAmount, currency)}</p>
+                <p className={cn("font-medium tabular-nums", Number(m.expensePaidAmount) > 0 && "text-success")}>
+                  {formatMoney(m.expensePaidAmount, currency)}
+                </p>
               </div>
               <div className="text-right">
-                <p className="text-muted-foreground">Remaining</p>
-                <p className={cn("font-semibold tabular-nums", remaining > 0.5 && "text-destructive")}>
-                  {formatMoney(remaining, currency)}
+                <p className="text-muted-foreground">{extra > 0.5 ? "Extra paid" : "Remaining"}</p>
+                <p
+                  className={cn(
+                    "font-semibold tabular-nums",
+                    extra > 0.5 ? "text-success" : remaining > 0.5 ? "text-destructive" : "text-success",
+                  )}
+                >
+                  {extra > 0.5 ? `+${formatMoney(extra, currency)}` : formatMoney(remaining, currency)}
                 </p>
               </div>
             </div>

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Loader2, PiggyBank } from "lucide-react";
+import { Loader2, PiggyBank, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { MonthPicker } from "@/components/room/month-picker";
@@ -108,9 +108,46 @@ export function SettlementsPage({ roomId }: { roomId: string }) {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                {formatMoney(totals.cash, currency)} paid directly · {formatMoney(totals.expenses, currency)} paid through
-                room expenses. Expenses you pay for the room count toward your share.
+                <span className="text-success">{formatMoney(totals.cash, currency)}</span> paid directly ·{" "}
+                <span className="text-success">{formatMoney(totals.expenses, currency)}</span> paid through expenses.
+                Expenses paid from your own pocket count toward your share.
               </p>
+            </CardContent>
+          </Card>
+
+          <Card className="py-5">
+            <CardHeader className="px-5">
+              <div className="flex items-center gap-2">
+                <Wallet className="size-4 text-primary" />
+                <p className="text-sm font-semibold">Room money</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Cash handed over to the room, and what&apos;s been spent from it.
+              </p>
+            </CardHeader>
+            <CardContent className="grid grid-cols-3 gap-3 px-5">
+              <div>
+                <p className="text-xs text-muted-foreground">Collected</p>
+                <p className="text-base font-semibold tabular-nums text-success">
+                  +{formatMoney(budget.cashCollected ?? 0, currency)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Spent</p>
+                <p className="text-base font-semibold tabular-nums text-destructive">
+                  −{formatMoney(budget.roomFundedSpend ?? 0, currency)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Left</p>
+                <p
+                  className={`text-base font-semibold tabular-nums ${
+                    Number(budget.roomMoneyLeft ?? 0) < 0 ? "text-destructive" : "text-foreground"
+                  }`}
+                >
+                  {formatMoney(budget.roomMoneyLeft ?? 0, currency)}
+                </p>
+              </div>
             </CardContent>
           </Card>
 

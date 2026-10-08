@@ -18,6 +18,7 @@ export const createExpenseSchema = z
     categoryId: z.string().optional(),
     date: z.coerce.date().default(() => new Date()),
     splitMethod: z.enum(["EQUAL", "PERCENTAGE", "EXACT", "SHARES", "PAYER_ONLY"]).default("EQUAL"),
+    funding: z.enum(["PERSONAL", "ROOM"]).default("PERSONAL"),
     notes: z.string().trim().max(500).optional(),
     payers: z.array(payerSchema).min(1, "At least one payer is required"),
     participantIds: z.array(z.string()).optional(),

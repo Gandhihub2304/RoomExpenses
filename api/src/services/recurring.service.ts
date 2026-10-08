@@ -126,6 +126,7 @@ export async function generateDueRecurring(roomId: string, recurringId: string, 
     categoryId: recurring.categoryId ?? undefined,
     date: new Date(),
     splitMethod: recurring.splitMethod,
+    funding: "PERSONAL",
     payers: [{ userId: actorId, amount: Number(recurring.amount) }],
     participantIds: recurring.splitMethod === "EQUAL" ? participantIds : undefined,
     participants:

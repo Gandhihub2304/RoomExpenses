@@ -83,7 +83,7 @@ export function RoommateDashboardView({
             <Wallet className="size-4 text-success" />
           </CardHeader>
           <CardContent className="px-4">
-            <div className="text-xl font-semibold tabular-nums">{formatMoney(budget?.paid ?? 0, currency)}</div>
+            <div className="text-xl font-semibold tabular-nums text-success">{formatMoney(budget?.paid ?? 0, currency)}</div>
           </CardContent>
         </Card>
         <Card className="gap-2 py-4">
@@ -92,7 +92,7 @@ export function RoommateDashboardView({
             <ArrowUpFromLine className="size-4 text-success" />
           </CardHeader>
           <CardContent className="px-4">
-            <div className="text-xl font-semibold tabular-nums">
+            <div className="text-xl font-semibold tabular-nums text-success">
               {formatMoney(data.myPaidThisMonth, currency)}
             </div>
           </CardContent>
@@ -188,8 +188,8 @@ export function RoommateDashboardView({
                         {expense.category.name}
                       </Badge>
                     )}
-                    <span className="text-sm font-semibold tabular-nums">
-                      {formatMoney(expense.amount, currency)}
+                    <span className="text-sm font-semibold tabular-nums text-destructive">
+                      −{formatMoney(expense.amount, currency)}
                     </span>
                   </div>
                 </div>

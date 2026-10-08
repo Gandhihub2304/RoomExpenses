@@ -46,6 +46,11 @@ enum ExpenseStatus {
   DELETED
 }
 
+enum ExpenseFunding {
+  PERSONAL
+  ROOM
+}
+
 enum SettlementStatus {
   PENDING
   PARTIALLY_PAID
@@ -287,6 +292,9 @@ model Expense {
   date          DateTime      @default(now())
   splitMethod   SplitMethod   @default(EQUAL)
   status        ExpenseStatus @default(ACTIVE)
+  /// PERSONAL: paid from the payer's own pocket, counts toward their budget share.
+  /// ROOM: paid out of money already collected into the room budget.
+  funding       ExpenseFunding @default(PERSONAL)
   notes         String?
   createdById   String
   createdBy     User          @relation("ExpenseCreatedBy", fields: [createdById], references: [id])

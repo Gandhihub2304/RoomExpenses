@@ -15,14 +15,16 @@ function monthRange(year: number, month: number) {
 /**
  * Divides `totalAmount` equally across the room's active members. Each
  * member's contribution is the money they handed over (paidAmount) plus
- * every room expense they paid for during the budget month — buying
- * groceries for the room counts the same as paying cash into the budget.
+ * every room expense they paid for out of their own pocket during the budget
+ * month. Expenses paid with room money (funding = ROOM) come out of what was
+ * already collected, so they don't count as anyone's contribution.
  */
 async function getMemberSplit(
   roomId: string,
   budgetId: string | null,
   totalAmount: Decimal | null,
   range: { start: Date; end: Date },
+  excludeExpenseId?: string,
 ) {
   const [members, payments, expensePaid] = await Promise.all([
     prisma.roomMembership.findMany({
@@ -33,7 +35,15 @@ async function getMemberSplit(
     budgetId ? prisma.budgetMemberPayment.findMany({ where: { budgetId } }) : [],
     prisma.expensePayer.groupBy({
       by: ["userId"],
-      where: { expense: { roomId, status: "ACTIVE", date: { gte: range.start, lte: range.end } } },
+      where: {
+        expense: {
+          roomId,
+          status: "ACTIVE",
+          funding: "PERSONAL",
+          date: { gte: range.start, lte: range.end },
+          ...(excludeExpenseId ? { id: { not: excludeExpenseId } } : {}),
+        },
+      },
       _sum: { amount: true },
     }),
   ]);
@@ -61,6 +71,32 @@ async function getMemberSplit(
       extraAmount: (remaining.lessThan(0) ? remaining.abs() : new Decimal(0)).toString(),
     };
   });
+}
+
+/**
+ * Members (from `userIds`) who have NOT yet covered their share of the budget
+ * for the month containing `date`. Used to decide whether an expense may be
+ * paid with room money. Returns all of them when that month has no budget.
+ */
+export async function membersWithShareDue(
+  roomId: string,
+  date: Date,
+  userIds: string[],
+  excludeExpenseId?: string,
+) {
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+  const budget = await prisma.budget.findUnique({
+    where: { roomId_month_year: { roomId, month, year } },
+  });
+  const users = await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } });
+  if (!budget) return { budgetExists: false, due: users };
+
+  const split = await getMemberSplit(roomId, budget.id, budget.totalAmount, monthRange(year, month), excludeExpenseId);
+  const dueIds = new Set(
+    split.filter((m) => new Decimal(m.remainingAmount).greaterThan(0.5)).map((m) => m.userId),
+  );
+  return { budgetExists: true, due: users.filter((u) => dueIds.has(u.id)) };
 }
 
 export async function getCurrentBudget(roomId: string) {
@@ -107,7 +143,17 @@ export async function getBudgetForMonth(roomId: string, month: number, year: num
     ? totalSpend.div(budget.totalAmount).mul(100).toNumber()
     : 0;
 
-  const memberSplit = await getMemberSplit(roomId, budget.id, budget.totalAmount, { start, end });
+  const [memberSplit, roomFundedAgg] = await Promise.all([
+    getMemberSplit(roomId, budget.id, budget.totalAmount, { start, end }),
+    prisma.expense.aggregate({
+      where: { roomId, status: "ACTIVE", funding: "ROOM", date: { gte: start, lte: end } },
+      _sum: { amount: true },
+    }),
+  ]);
+  // The room "pot" is the cash members handed over; room-money expenses are
+  // paid out of it.
+  const cashCollected = memberSplit.reduce((sum, m) => sum.plus(m.paidAmount), new Decimal(0));
+  const roomFundedSpend = roomFundedAgg._sum.amount ?? new Decimal(0);
 
   return {
     exists: true,
@@ -117,6 +163,9 @@ export async function getBudgetForMonth(roomId: string, month: number, year: num
     totalAmount: budget.totalAmount.toString(),
     warningPct: budget.warningPct,
     totalSpend: totalSpend.toString(),
+    cashCollected: cashCollected.toString(),
+    roomFundedSpend: roomFundedSpend.toString(),
+    roomMoneyLeft: cashCollected.minus(roomFundedSpend).toString(),
     utilizationPct,
     categories: budget.categories.map((bc) => ({
       categoryId: bc.categoryId,

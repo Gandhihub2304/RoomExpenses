@@ -5,6 +5,7 @@ import { ApiError } from "@/utils/api-error";
 import { splitEqually, splitByPercentage, splitByShares, validateExactSplit } from "@/utils/money";
 import { logActivity } from "@/services/activity-log.service";
 import { notifyRoomMembers } from "@/services/notification.service";
+import { membersWithShareDue } from "@/services/budget.service";
 import type { CreateExpenseInput, ListExpensesQuery } from "@/validators/expense";
 
 async function assertMembers(roomId: string, userIds: string[]) {
@@ -15,6 +16,28 @@ async function assertMembers(roomId: string, userIds: string[]) {
   });
   if (members.length !== unique.length) {
     throw ApiError.badRequest("All payers and participants must be active members of this room");
+  }
+}
+
+async function assertRoomFundingAllowed(
+  roomId: string,
+  input: CreateExpenseInput,
+  excludeExpenseId?: string,
+) {
+  if (input.funding !== "ROOM") return;
+  const { budgetExists, due } = await membersWithShareDue(
+    roomId,
+    input.date,
+    input.payers.map((p) => p.userId),
+    excludeExpenseId,
+  );
+  if (!budgetExists) {
+    throw ApiError.badRequest("Room money can only be used in a month that has a budget");
+  }
+  if (due.length > 0) {
+    throw ApiError.badRequest(
+      `${due.map((u) => u.name).join(", ")} still has part of this month's share to pay, so this expense counts toward that share. Room money can be used once the share is fully paid.`,
+    );
   }
 }
 
@@ -70,6 +93,7 @@ export async function createExpense(roomId: string, createdById: string, input: 
   const participantIds = participantShares.map((p) => p.userId);
 
   await assertMembers(roomId, [...payerIds, ...participantIds]);
+  await assertRoomFundingAllowed(roomId, input);
 
   if (input.categoryId) {
     const category = await prisma.category.findUnique({ where: { id: input.categoryId } });
@@ -88,6 +112,7 @@ export async function createExpense(roomId: string, createdById: string, input: 
         categoryId: input.categoryId,
         date: input.date,
         splitMethod: input.splitMethod,
+        funding: input.funding,
         notes: input.notes,
         createdById,
         payers: {
@@ -203,6 +228,7 @@ export async function updateExpense(
   const participantShares = computeShares(input);
   const participantIds = participantShares.map((p) => p.userId);
   await assertMembers(roomId, [...payerIds, ...participantIds]);
+  await assertRoomFundingAllowed(roomId, input, expenseId);
 
   const updated = await prisma.$transaction(async (tx) => {
     await tx.expensePayer.deleteMany({ where: { expenseId } });
@@ -217,6 +243,7 @@ export async function updateExpense(
         categoryId: input.categoryId,
         date: input.date,
         splitMethod: input.splitMethod,
+        funding: input.funding,
         notes: input.notes,
         payers: { create: input.payers.map((p) => ({ userId: p.userId, amount: p.amount })) },
         participants: {
