@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { Bell, BellOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ export function NotificationsPage() {
   React.useEffect(() => {
     load();
   }, [load]);
+  useAutoRefresh(load);
 
   async function handleRead(item: NotificationItem) {
     if (item.readAt) return;

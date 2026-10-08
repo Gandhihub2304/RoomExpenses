@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Loader2, Mail, MoreVertical, ShieldCheck, UserMinus, UserCog } from "lucide-react";
@@ -38,6 +39,7 @@ export function MembersPage({ roomId }: { roomId: string }) {
   React.useEffect(() => {
     load();
   }, [load]);
+  useAutoRefresh(load);
 
   async function handleToggleRole(member: RoomMemberDetail) {
     const newRole = member.role === "ADMIN" ? "ROOMMATE" : "ADMIN";

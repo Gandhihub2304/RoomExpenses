@@ -4,24 +4,7 @@ import * as React from "react";
 import { History, Loader2, ShieldAlert } from "lucide-react";
 import { useRoom } from "@/lib/room-context";
 import { listActivity, type ActivityLogEntry } from "@/lib/api/activity";
-import { formatDateTime } from "@/lib/format";
-
-const ACTION_LABEL: Record<string, string> = {
-  CREATE: "created",
-  UPDATE: "updated",
-  DELETE: "deleted",
-  ARCHIVE: "archived",
-  APPROVE: "approved",
-  SETTLE: "settled",
-  JOIN: "joined the room via",
-  LEAVE: "left the room",
-  REMOVE: "removed",
-  SUSPEND: "suspended",
-  INVITE: "invited someone to",
-  ROLE_CHANGE: "changed the role of",
-  LOGIN: "logged in",
-  LOGOUT: "logged out",
-};
+import { formatDateTime, describeActivity } from "@/lib/format";
 
 export function ActivityPage({ roomId }: { roomId: string }) {
   const { room } = useRoom();
@@ -69,12 +52,8 @@ export function ActivityPage({ roomId }: { roomId: string }) {
                 <p className="text-sm">
                   <span className="font-medium">{log.actor.name}</span>{" "}
                   <span className="text-muted-foreground">
-                    {ACTION_LABEL[log.action] ?? log.action.toLowerCase()}
-                  </span>{" "}
-                  {(() => {
-                    const entity = log.entityType.replace(/([A-Z])/g, " $1").trim().toLowerCase();
-                    return /^[aeiou]/.test(entity) ? `an ${entity}` : `a ${entity}`;
-                  })()}
+                    {describeActivity(log.action, log.entityType)}
+                  </span>
                 </p>
                 <span className="shrink-0 text-xs text-muted-foreground">{formatDateTime(log.createdAt)}</span>
               </div>

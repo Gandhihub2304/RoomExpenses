@@ -22,6 +22,41 @@ export function formatDateTime(date: string | Date) {
   }).format(new Date(date));
 }
 
+const ACTIVITY_VERB: Record<string, string> = {
+  CREATE: "created",
+  UPDATE: "updated",
+  DELETE: "deleted",
+  ARCHIVE: "archived",
+  APPROVE: "approved",
+  SETTLE: "settled",
+  REMOVE: "removed",
+  SUSPEND: "suspended",
+  INVITE: "created an invitation for",
+  ROLE_CHANGE: "changed the role of",
+};
+
+// Actions that read as a complete phrase without naming the entity.
+const ACTIVITY_PHRASE: Record<string, string> = {
+  JOIN: "joined the room",
+  LEAVE: "left the room",
+  LOGIN: "logged in",
+  LOGOUT: "logged out",
+};
+
+const ENTITY_NAME: Record<string, string> = {
+  RoomMembership: "member",
+  BudgetMemberPayment: "budget contribution",
+  GoalContribution: "goal contribution",
+  RecurringExpense: "recurring expense",
+};
+
+export function describeActivity(action: string, entityType: string) {
+  if (ACTIVITY_PHRASE[action]) return ACTIVITY_PHRASE[action];
+  const verb = ACTIVITY_VERB[action] ?? action.toLowerCase().replace(/_/g, " ");
+  const entity = ENTITY_NAME[entityType] ?? entityType.replace(/([A-Z])/g, " $1").trim().toLowerCase();
+  return `${verb} ${/^[aeiou]/.test(entity) ? "an" : "a"} ${entity}`;
+}
+
 export function relativeTime(date: string | Date) {
   const diffMs = Date.now() - new Date(date).getTime();
   const diffMin = Math.round(diffMs / 60000);

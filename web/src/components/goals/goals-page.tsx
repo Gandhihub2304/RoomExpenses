@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { toast } from "sonner";
 import { Loader2, PartyPopper, Plus, Sparkles, Target, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ export function GoalsPage({ roomId }: { roomId: string }) {
   React.useEffect(() => {
     load();
   }, [load]);
+  useAutoRefresh(load);
 
   async function handleCancel() {
     if (!goal) return;

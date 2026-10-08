@@ -74,13 +74,23 @@ export async function getAdminDashboard(roomId: string, month?: number, year?: n
   ]);
 
   const categoryIds = categoryBreakdown.map((c) => c.categoryId).filter(Boolean) as string[];
-  const categories = await prisma.category.findMany({ where: { id: { in: categoryIds } } });
+  const [categories, monthBudget] = await Promise.all([
+    prisma.category.findMany({ where: { id: { in: categoryIds } } }),
+    prisma.budget.findUnique({
+      where: { roomId_month_year: { roomId, month: resolved.month, year: resolved.year } },
+    }),
+  ]);
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
+  // The Budget page's per-month budget is the source of truth; the room-level
+  // monthlyBudget setting is only a default for months without one.
+  const effectiveBudget = monthBudget?.totalAmount ?? room.monthlyBudget;
+
   const monthlySpend = monthExpensesAgg._sum.amount ?? new Decimal(0);
-  const budgetUtilizationPct = room.monthlyBudget
-    ? Math.min(100, monthlySpend.div(room.monthlyBudget).mul(100).toNumber())
-    : null;
+  const budgetUtilizationPct =
+    effectiveBudget && effectiveBudget.greaterThan(0)
+      ? Math.min(100, monthlySpend.div(effectiveBudget).mul(100).toNumber())
+      : null;
 
   return {
     selectedMonth: resolved.month,
@@ -89,13 +99,11 @@ export async function getAdminDashboard(roomId: string, month?: number, year?: n
       id: room.id,
       name: room.name,
       currency: room.currency,
-      monthlyBudget: room.monthlyBudget?.toString() ?? null,
+      monthlyBudget: effectiveBudget?.toString() ?? null,
     },
     totalExpenses: (totalExpensesAgg._sum.amount ?? new Decimal(0)).toString(),
     monthlySpend: monthlySpend.toString(),
-    remainingBudget: room.monthlyBudget
-      ? room.monthlyBudget.minus(monthlySpend).toString()
-      : null,
+    remainingBudget: effectiveBudget ? effectiveBudget.minus(monthlySpend).toString() : null,
     budgetUtilizationPct,
     memberCount,
     pendingSettlements,

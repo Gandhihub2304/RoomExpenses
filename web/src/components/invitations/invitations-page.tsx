@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { Copy, Loader2, Mail, Plus, Trash2 } from "lucide-react";
@@ -27,6 +28,7 @@ export function InvitationsPage({ roomId }: { roomId: string }) {
   React.useEffect(() => {
     load();
   }, [load]);
+  useAutoRefresh(load);
 
   const inviteLink =
     typeof window !== "undefined" && room ? `${window.location.origin}/invite/${room.inviteCode}` : "";

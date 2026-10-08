@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { AdminDashboardData } from "@/lib/api/dashboard";
-import { formatMoney, formatDate, relativeTime } from "@/lib/format";
+import { formatMoney, formatDate, relativeTime, describeActivity } from "@/lib/format";
 import { GoalCard } from "@/components/goals/goal-card";
 
 function StatCard({
@@ -228,7 +228,7 @@ export function AdminDashboardView({
                   <div key={log.id} className="flex items-center justify-between gap-2 text-sm">
                     <span className="truncate text-muted-foreground">
                       <span className="font-medium text-foreground">{log.actor.name}</span>{" "}
-                      {log.action.toLowerCase()}d a {log.entityType.toLowerCase()}
+                      {describeActivity(log.action, log.entityType)}
                     </span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {relativeTime(log.createdAt)}

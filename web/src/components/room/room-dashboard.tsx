@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { getDashboard, type DashboardData } from "@/lib/api/dashboard";
 import { AdminDashboardView } from "@/components/room/admin-dashboard-view";
@@ -30,6 +31,7 @@ export function RoomDashboard({ roomId }: { roomId: string }) {
   React.useEffect(() => {
     load();
   }, [load]);
+  useAutoRefresh(load);
 
   function handleMonthChange(newMonth: number, newYear: number) {
     setMonth(newMonth);

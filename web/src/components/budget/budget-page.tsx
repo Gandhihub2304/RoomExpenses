@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { FormField } from "@/components/form-field";
 import { useRoom } from "@/lib/room-context";
 import { useAuth } from "@/lib/auth-context";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import {
   getCurrentBudget,
   upsertBudget,
@@ -34,18 +35,25 @@ export function BudgetPage({ roomId }: { roomId: string }) {
   const [warningPct, setWarningPct] = React.useState("80");
   const [saving, setSaving] = React.useState(false);
 
-  const load = React.useCallback(async () => {
-    const result = await getCurrentBudget(roomId);
-    if (result.ok) {
-      setBudget(result.data);
-      setTotalAmount(result.data.totalAmount ?? "");
-      setWarningPct(String(result.data.warningPct));
-    }
-  }, [roomId]);
+  const load = React.useCallback(
+    async (syncForm = false) => {
+      const result = await getCurrentBudget(roomId);
+      if (result.ok) {
+        setBudget(result.data);
+        // Background refreshes must not overwrite what the admin is typing.
+        if (syncForm) {
+          setTotalAmount(result.data.totalAmount ?? "");
+          setWarningPct(String(result.data.warningPct));
+        }
+      }
+    },
+    [roomId],
+  );
 
   React.useEffect(() => {
-    load();
+    load(true);
   }, [load]);
+  useAutoRefresh(load);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -68,7 +76,7 @@ export function BudgetPage({ roomId }: { roomId: string }) {
       return;
     }
     toast.success("Budget saved");
-    load();
+    load(true);
   }
 
   if (!budget) {

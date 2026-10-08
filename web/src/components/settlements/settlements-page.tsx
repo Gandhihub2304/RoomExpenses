@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { toast } from "sonner";
 import { ArrowRight, CheckCircle2, HandCoins, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ export function SettlementsPage({ roomId }: { roomId: string }) {
   React.useEffect(() => {
     load();
   }, [load]);
+  useAutoRefresh(load);
 
   async function handleRecordPayment(fromUserId: string, toUserId: string, amount: number) {
     setBusyId(`${fromUserId}-${toUserId}`);
@@ -113,7 +115,11 @@ export function SettlementsPage({ roomId }: { roomId: string }) {
           {data.suggestedTransactions.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
               <CheckCircle2 className="size-8 text-success" />
-              <p className="mt-3 text-sm text-muted-foreground">Everyone is settled up!</p>
+              <p className="mt-3 text-sm text-muted-foreground">
+                {data.pendingSettlements.length > 0
+                  ? "Nothing left to pay — waiting for the payments below to be confirmed."
+                  : "Everyone is settled up!"}
+              </p>
             </div>
           ) : (
             <div className="space-y-3">

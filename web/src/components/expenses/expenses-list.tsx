@@ -16,6 +16,7 @@ import {
 import { MoreVertical } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useRoom } from "@/lib/room-context";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { listExpenses, deleteExpense, archiveExpense, type Expense } from "@/lib/api/expenses";
 import { formatMoney, formatDate } from "@/lib/format";
 
@@ -37,6 +38,7 @@ export function ExpensesList({ roomId }: { roomId: string }) {
     const t = setTimeout(load, 200);
     return () => clearTimeout(t);
   }, [load]);
+  useAutoRefresh(load);
 
   async function handleDelete() {
     if (!deleteTarget) return;

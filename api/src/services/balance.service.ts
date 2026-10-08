@@ -63,7 +63,19 @@ export async function getRoomBalanceSummary(roomId: string) {
     balance: amount.toDecimalPlaces(2).toString(),
   }));
 
-  const suggestedTransactions = simplifyDebts(balances).map((t) => ({
+  // A payment that's been recorded but not yet confirmed shouldn't be suggested
+  // again — otherwise the debt looks untouched and people pay twice.
+  const pending = await prisma.settlement.findMany({
+    where: { roomId, status: { in: ["PENDING", "PARTIALLY_PAID"] } },
+    select: { fromUserId: true, toUserId: true, amount: true },
+  });
+  const outstanding = new Map(balances);
+  for (const s of pending) {
+    outstanding.set(s.fromUserId, (outstanding.get(s.fromUserId) ?? new Decimal(0)).plus(s.amount));
+    outstanding.set(s.toUserId, (outstanding.get(s.toUserId) ?? new Decimal(0)).minus(s.amount));
+  }
+
+  const suggestedTransactions = simplifyDebts(outstanding).map((t) => ({
     fromUserId: t.fromUserId,
     fromName: userMap.get(t.fromUserId)?.name ?? "Unknown",
     toUserId: t.toUserId,
